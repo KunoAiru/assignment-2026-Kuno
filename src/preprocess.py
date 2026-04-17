@@ -72,6 +72,7 @@ def main():
     np.savetxt(f"{path}/{val_file}", val_table, delimiter="\t")
     np.savetxt(f"{path}/{test_file}", test_table, delimiter="\t")
 
+    """"
     # データを標準化
     train_standardized = standardize(f"{path}/{train_file}")
     val_standardized = standardize(f"{path}/{val_file}")
@@ -81,6 +82,6 @@ def main():
     np.savetxt(f"{path}/{train_file}", train_standardized, delimiter="\t")
     np.savetxt(f"{path}/{val_file}", val_standardized, delimiter="\t")
     np.savetxt(f"{path}/{test_file}", test_standardized, delimiter="\t")   
-
+    """
 if __name__ == "__main__":
     main()
