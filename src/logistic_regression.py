@@ -1,5 +1,3 @@
-from xml.parsers.expat import model
-
 import torch
 import wandb
 from tqdm import tqdm
@@ -89,7 +87,7 @@ def evaluate(X,y,w,early_stopping=None,debug=True):
     return eval_list
 
 def main():
-    
+
     df_train = pd.read_csv(f"{import_path}/{train_file}", sep="\t", header=None)
     df_val = pd.read_csv(f"{import_path}/{val_file}", sep="\t", header=None)
     df_test = pd.read_csv(f"{import_path}/{test_file}", sep="\t", header=None)
