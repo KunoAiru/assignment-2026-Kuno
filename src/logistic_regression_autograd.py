@@ -1,4 +1,4 @@
-import os
+import time
 import argparse
 import pandas as pd
 import torch
@@ -84,12 +84,20 @@ def evaluate(X, y, model, early_stopping=None, debug=True):
 
 
 def main():
+    wandb.login()
+
+    #データの読み取りとTensor変更
     df_train = pd.read_csv(f"{import_path}/{train_file}", sep="\t", header=None)
     df_val = pd.read_csv(f"{import_path}/{val_file}", sep="\t", header=None)
     df_test = pd.read_csv(f"{import_path}/{test_file}", sep="\t", header=None)
     tensor_train = torch.tensor(df_train.values, dtype=torch.float32)
     tensor_val = torch.tensor(df_val.values, dtype=torch.float32)
     tensor_test = torch.tensor(df_test.values, dtype=torch.float32)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tensor_train = tensor_train.to(device)
+    tensor_val = tensor_val.to(device)
+    tensor_test = tensor_test.to(device)
 
     # 乱数値を固定
     torch.manual_seed(random_seed)
@@ -101,18 +109,24 @@ def main():
     y_test = tensor_test[:,0]
     X_test = tensor_test[:,1:]
 
-    model = torch.nn.Linear(X_train.shape[1], 1)
+    model = torch.nn.Linear(X_train.shape[1], 1).to(device)
 
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
     early_stopping = EarlyStopping(patience=3, verbose=True)
 
-    wandb.init(project="logistic_regression_autograd",config={
+    run = wandb.init(project="logistic_regression_autograd",config={
             "learning_rate": learning_rate,
             "epochs": num_epochs,
             "random_seed": random_seed,
         },
+        mode = "disabled" if not wandb.run else "online"
     )
+
+    if device.type == "cuda":
+        torch.cuda.synchronize()
+    start_time = time.time()
+
 
     for _ in tqdm(range(num_epochs), desc="Epochs"):
         model.train()
@@ -134,17 +148,13 @@ def main():
 
             epoch_val_loss = sum(criterion(torch.sigmoid(model(X_val[i].unsqueeze(0))),y_val[i].view(1, 1)).item()for i in range(X_val.shape[0])) / X_val.shape[0]
 
-            wandb.log({
-                "epoch_train_loss": epoch_train_loss,
-                "epoch_val_loss": epoch_val_loss,
-                "accuracy": eval_result[0],
-                "precision": eval_result[1],
-                "recall": eval_result[2],
-                "F1_score": eval_result[3],
-            })
-
             if eval_result[4]:
                 break
+
+            wandb.log({"epoch_train_loss": epoch_train_loss, "epoch_val_loss": epoch_val_loss, "accuracy": eval_result[0], "precision": eval_result[1], "recall": eval_result[2], "F1_score": eval_result[3]})   
+
+    
+
 
     model.eval()
     with torch.no_grad():
@@ -166,7 +176,14 @@ def main():
     test_results_df.to_csv(f"{output_path}/test_results.csv", index=False)
     torch.save(model.state_dict(), f"{output_path}/model_autograd.pt")
 
+    if device.type == "cuda":
+        torch.cuda.synchronize()
+    end_time = time.time()
+
+    print(f"Total training time: {end_time - start_time:.2f} seconds")
+
     wandb.finish()
+
 
 
 if __name__ == "__main__":
