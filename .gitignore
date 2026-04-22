@@ -1,0 +1,8 @@
+*.log
+*.tmp
+*.tsv
+*.csv
+*.txt
+*debug*
+*wandb*
+*.pt
